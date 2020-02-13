@@ -2,30 +2,60 @@ const express = require('express');
 const app = express();
 app.use(express.json());
 
-//Array standin for database
+/*Array standin for database
 const inv = [
 	{id: 1, items: 'test1'},
 	{id: 2, items: 'test2'},
 	{id: 3, items: 'test3'},
 ];
+*/
 
 
-app.get('/', (request, respond) => {
-	respond.send('Hello World!!!');
+//Connect to database
+var mysql = require('mysql');
+
+var con = mysql.createConnection({
+  host: "localhost",
+  user: "root",
+  password: "",
+  database: "inventory"
 });
 
-app.get('/api/inv', (request, respond) => {
-	respond.send (inv);
+
+//Create table if it doesnt exists
+con.connect(function(err) {
+  if (err) throw err;
+	con.query("SELECT * items", function (err, result) {
+		if (!err){
+			var sql = "CREATE TABLE items (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255), qty INT, amount INT)";
+			con.query(sql, function (err, result) {
+				if (err) throw err;
+					console.log("Table created");
+			});			
+		}
+			
+	});
 });
+
+
+//Get table & put it in array
+var inv = [];
+con.query("SELECT * from items", function (err, result){
+	if (err) throw err;
+		inv = result;
+		console.log(inv);
+});
+
 
 //GET
 app.get('/api/inv/:any', (request, respond) => {
 	const inventory = inv.find(c => c.id === parseInt(request.params.any));
+	
 	if(!inventory){
 		respond.status(404).send('unable to find id');
 	}
 	else
-		respond.send(inventory);
+		respond.send(inventory); 
 });
 
 //POST
@@ -37,6 +67,7 @@ app.post('/api/inv', (request, respond) => {
 	inv.push(inventory);
 	respond.send(inventory);
 });
+
 
 //PUT
 app.put('/api/inv/:any', (request, respond) => {
@@ -69,4 +100,4 @@ app.delete('/api/inv/:any', (request, respond) => {
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log(`port ${port}`));
 
-console.log('hello world');
+console.log('Hello world');
