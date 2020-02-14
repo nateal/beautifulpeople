@@ -2,15 +2,6 @@ const express = require('express');
 const app = express();
 app.use(express.json());
 
-/*Array standin for database
-const inv = [
-	{id: 1, items: 'test1'},
-	{id: 2, items: 'test2'},
-	{id: 3, items: 'test3'},
-];
-*/
-
-
 //Connect to database
 var mysql = require('mysql');
 
@@ -26,74 +17,91 @@ var con = mysql.createConnection({
 con.connect(function(err) {
   if (err) throw err;
 	con.query("SELECT * items", function (err, result) {
-		if (!err){
-			var sql = "CREATE TABLE items (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255), qty INT, amount INT)";
-			con.query(sql, function (err, result) {
-				if (err) throw err;
-					console.log("Table created");
-			});			
-		}
+	if (!err){
+		var sql = "CREATE TABLE items (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255), qty INT, amount INT)";
+		con.query(sql, function (err, result) {
+			if (err) throw err;
+				console.log("Table created");
+		});			
+	}
 			
 	});
 });
 
 
-//Get table & put it in array
+//initialize array
 var inv = [];
-con.query("SELECT * from items", function (err, result){
-	if (err) throw err;
-		inv = result;
-		console.log(inv);
-});
-
 
 //GET
 app.get('/api/inv/:any', (request, respond) => {
-	const inventory = inv.find(c => c.id === parseInt(request.params.any));
-	
-	if(!inventory){
+
+	con.query(`SELECT * from items WHERE id = '${request.params.any}'`, function (err, result){
+	if (err) throw err;
+		if(!result){
 		respond.status(404).send('unable to find id');
 	}
 	else
-		respond.send(inventory); 
+		respond.send(result); 
+	});
+
 });
 
 //POST
 app.post('/api/inv', (request, respond) => {
+
+	con.query(`INSERT INTO items (name, qty, amount) VALUES ("${request.body.name}","${request.body.qty}","${request.body.amount}")`);
+
 	const inventory = {
-		id: inv.length + 1,
-		items: request.body.items
+		name: request.body.name,
+		qty: request.body.qty,
+		amount: request.body.amount
 	};
-	inv.push(inventory);
+
 	respond.send(inventory);
+
 });
 
 
 //PUT
 app.put('/api/inv/:any', (request, respond) => {
-	const inventory = inv.find(c => c.id === parseInt(request.params.any));
-	if(!inventory){
+
+	con.query(`SELECT * from items WHERE id = '${request.params.any}'`, function (err, result){
+	if (err) throw err;
+		if(!result){
 		respond.status(404).send('unable to find id');
 	}
 
 	else{
-		inventory.items = request.body.items;
-		respond.send(inventory);
+		if(request.body.name != '')
+			var nameQuery = `name = '${request.body.name}'`;
 
+		if(request.body.qty != '')
+			var qtyQuery = `qty = '${request.body.qty}'`;
+
+		if(request.body.amount != '')
+			var amountQuery = `amount = '${request.body.amount}'`;
+
+		var queryBuilder = `${nameQuery}, ${qtyQuery}, ${amountQuery}`
+
+		con.query(`UPDATE items SET ${queryBuilder} WHERE id = '${request.params.any}'`);
+
+		respond.send(queryBuilder);
 	}
+
+	});
 });
 
 //DELETE
 app.delete('/api/inv/:any', (request, respond) => {
-	const inventory = inv.find(c => c.id === parseInt(request.params.any));
-	if(!inventory){
+	con.query(`SELECT * from items WHERE id = '${request.params.any}'`, function (err, result){
+	if (err) throw err;
+		if(!result){
 		respond.status(404).send('unable to find id');
 	}
-
-	const index = inv.indexOf(inventory);
-	inv.splice(index, 1);
-	respond.send(inventory);
-
+	else
+		con.query(`DELETE from items WHERE id = '${request.params.any}'`)
+		respond.send('Deleted') 
+	});
 });
 
 // PORT
